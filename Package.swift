@@ -5,17 +5,26 @@ import PackageDescription
 
 let package = Package(
     name: "AudiConnect",
+    platforms: [.iOS(.v16), .macOS(.v13)],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
-        .library(
-            name: "AudiConnect",
-            targets: ["AudiConnect"]),
+        .executable(name: "AudiConnectCLT", targets: ["CommandLineTool"]),
+        .library(name: "AudiConnect", targets: ["AudiConnect"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.2"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
-        .target(
-            name: "AudiConnect"),
-
+        .target(name: "AudiConnect"),
+        .executableTarget(
+            name: "CommandLineTool",
+            dependencies: [
+                .target(name: "AudiConnect", condition: .when(platforms: [.macOS])),
+                .product(
+                    name: "ArgumentParser",
+                    package: "swift-argument-parser",
+                    condition: .when(platforms: [.macOS])
+                ),
+            ]
+        ),
     ]
 )
