@@ -7,6 +7,7 @@
 
 import CommonCrypto
 import Foundation
+import SwiftSoup
 
 final class Auth {
     
@@ -22,7 +23,7 @@ final class Auth {
     private var mbbTokenExpired: Date?
     private var idkToken: [String: String] = [:]
     private var audiToken: [String: String] = [:]
-    private var uris: Configuration? = nil
+    private var configuration: Configuration? = nil
     private var binded = false
     
     private let urlSession = URLSession.shared
@@ -40,7 +41,11 @@ final class Auth {
     }
     
     func login() async throws {
-        try await retrieveURLService()
+        let configuration = if let configuration = self.configuration {
+            configuration
+        } else {
+            try await retrieveURLService()
+        }
         
         let codeVerifier = generateCodeVerifier()
         let codeChallenge = generateCodeChallenge(from: codeVerifier)
@@ -50,7 +55,7 @@ final class Auth {
         let headers = headers()
         let data = [
             "response_type": "code",
-            "client_id": uris?.clientID,
+            "client_id": configuration.clientID,
             "redirect_uri": "myaudi:///",
             "scope": "address badge birthdate birthplace email gallery mbb name nationalIdentifier nationality nickname phone picture profession profile vin openid",
             "state": UUID().uuidString,
@@ -58,13 +63,24 @@ final class Auth {
             "prompt": "login",
             "code_challenge": codeChallenge,
             "code_challenge_method": codeChallengeMethod,
-            "ui_locales": "\(uris?.language)-\(uris?.language) \(uris?.language)",
+            "ui_locales": "\(configuration.language)-\(configuration.language) \(configuration.language)",
         ]
         
-        // TODO: Continue
+        var urlComponents = URLComponents(url: configuration.authorizationEndpoint, resolvingAgainstBaseURL: false)
+        urlComponents?.queryItems = data.map { URLQueryItem(name: $0.key, value: $0.value) }
+        guard let url = urlComponents?.url else {
+            throw FailedToConstructURLError()
+        }
+        var request = URLRequest(url: url)
+        request.allHTTPHeaderFields = headers
+        let idkResponse = try await urlSession.data(for: request)
+        let hiddenFormElements = try extractHiddenFormData(from: idkResponse.0)
+        
+        
     }
     
-    private func retrieveURLService() async throws {
+    @discardableResult
+    private func retrieveURLService() async throws -> Configuration {
         let marketURL = AudiConnectConstants.marketURL.appending(path: "/markets")
         let markets: MarketsResponse = try await urlSession.object(from: marketURL)
         guard let countrySpecification = markets.countries.countrySpecifications[country] else {
@@ -77,7 +93,7 @@ final class Auth {
         
         let openIDConfig: OpenIDConfig = try await urlSession.object(from: services.oidcURL)
         
-        uris = Configuration(
+        let configuration = Configuration(
             clientID: services.clientID ?? AudiConnectConstants.clientIDs[model] ?? "",
             audiURL: services.audiURL,
             baseURL: services.baseURL,
@@ -93,6 +109,8 @@ final class Auth {
             language: language,
             country: country
         )
+        self.configuration = configuration
+        return configuration
     }
     
     private func headers(
@@ -182,6 +200,22 @@ private func generateCodeChallenge(from codeVerifier: String) -> String {
 extension Data.Base64EncodingOptions {
     static let urlSafeBase64: Data.Base64EncodingOptions = [.endLineWithLineFeed, .endLineWithCarriageReturn]
 }
+
+private func extractHiddenFormData(from data: Data) throws -> [String: String] {
+    guard let string = String(data: data, encoding: .utf8) else {
+        throw FailedToGetStringFromDataError()
+    }
+    let document = try SwiftSoup.parseBodyFragment(string)
+    return try document.getElementsByTag("input")
+        .filter { input in
+            try input.attr("type") == "hidden"
+        }
+        .reduce(into: [String: String]()) { result, input in
+            result[try input.attr("name")] = try input.val()
+        }
+}
+
+struct FailedToGetStringFromDataError: Error {}
 
 public enum Model: String, Sendable {
     case standard

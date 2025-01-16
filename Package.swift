@@ -12,9 +12,15 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.2.2"),
+        .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.6.0"),
     ],
     targets: [
-        .target(name: "AudiConnect"),
+        .target(
+            name: "AudiConnect",
+            dependencies: [
+                .product(name: "SwiftSoup", package: "SwiftSoup"),
+            ]
+        ),
         .executableTarget(
             name: "CommandLineTool",
             dependencies: [

@@ -40,6 +40,13 @@ private func logResponse(_ data: Data, forUrl url: URL?) {
             separator: "\n"
         )
     } catch {
-        print("Error parsing JSON: \(error)")
+        print(
+            "---------------",
+            "🌐 Response for url \(url?.debugDescription ?? "-")",
+            "---------------",
+            String(data: data, encoding: .utf8) ?? "None",
+            "---------------",
+            separator: "\n"
+        )
     }
 }
