@@ -7,7 +7,7 @@ let package = Package(
     name: "AudiConnect",
     platforms: [.iOS(.v16), .macOS(.v13)],
     products: [
-        .executable(name: "AudiConnectCLT", targets: ["CommandLineTool"]),
+        .executable(name: "AudiConnectCLT", targets: ["AudiConnectCLT"]),
         .library(name: "AudiConnect", targets: ["AudiConnect"]),
     ],
     dependencies: [
@@ -22,7 +22,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "CommandLineTool",
+            name: "AudiConnectCLT",
             dependencies: [
                 .target(name: "AudiConnect", condition: .when(platforms: [.macOS])),
                 .product(
