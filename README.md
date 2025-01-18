@@ -1,3 +1,11 @@
+<div align=center>
+
+# AudiConnect 
+
+[![Build](https://github.com/APPSTRM/AudiConnect/actions/workflows/build.yml/badge.svg)](https://github.com/APPSTRM/AudiConnect/actions/workflows/build.yml)
+
+</div>
+
 This is an unofficial Swift Package for integrating Audi Connect Services. This package has been assembled using the [audiconnectpy](https://github.com/cyr-ius/audiconnectpy) package as basis. Credits to [@cyr-ius](https://github.com/cyr-ius) for the creation and maintenance of the python package.
 
 You will require a My Audi account to be able to make use of this library.
