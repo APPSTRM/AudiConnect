@@ -9,16 +9,24 @@ import Foundation
 
 extension URLSession {
     
-    func object<Response: Decodable>(from url: URL, decoder: JSONDecoder = JSONDecoder()) async throws -> Response {
-        let (data, _) = try await data(from: url)
+    func object<Response: Decodable>(
+        from url: URL,
+        decoder: JSONDecoder = JSONDecoder(),
+        delegate: (any URLSessionTaskDelegate)? = nil
+    ) async throws -> Response {
+        let (data, _) = try await data(from: url, delegate: delegate)
 #if DEBUG
         logResponse(data, forUrl: url)
 #endif
         return try decoder.decode(Response.self, from: data)
     }
     
-    func object<Response: Decodable>(for request: URLRequest, decoder: JSONDecoder = JSONDecoder()) async throws -> Response {
-        let (data, _) = try await data(for: request)
+    func object<Response: Decodable>(
+        for request: URLRequest,
+        decoder: JSONDecoder = JSONDecoder(),
+        delegate: (any URLSessionTaskDelegate)? = nil
+    ) async throws -> Response {
+        let (data, _) = try await data(for: request, delegate: delegate)
 #if DEBUG
         logResponse(data, forUrl: request.url)
 #endif
