@@ -8,12 +8,12 @@
 import Foundation
 
 public struct VehicleStatusResponse: Decodable {
-    let vehicleLights: VehicleLights
-    let access: Access
-    let measurements: Measurements
-    let vehicleHealthInspection: VehicleHealthInspection
-    let oilLevel: OilLevel
-    let fuelStatus: FuelStatus
+    public let vehicleLights: VehicleLights
+    public let access: Access
+    public let measurements: Measurements
+    public let vehicleHealthInspection: VehicleHealthInspection
+    public let oilLevel: OilLevel
+    public let fuelStatus: FuelStatus
 }
 
 public extension VehicleStatusResponse {
