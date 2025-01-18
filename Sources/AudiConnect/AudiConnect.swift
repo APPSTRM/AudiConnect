@@ -3,107 +3,135 @@ import Foundation
 
 public final class AudiConnect {
     
-    let auth: Auth
+    private let auth: Auth
+    private let urlSession: URLSession
     
-    public init(username: String, password: String, country: String, model: Model) {
-        self.auth = Auth(username: username, password: password, country: country, model: model)
+    private var vehicleURLs: [VIN: FillRegion] = [:]
+    
+    public init(username: String, password: String, country: String, model: Model, urlSession: URLSession = .shared) {
+        self.auth = Auth(username: username, password: password, country: country, model: model, urlSession: urlSession)
+        self.urlSession = urlSession
     }
     
-//    func getVehicleData(vin: String) async throws -> VehicleData {
-//        try await refreshTokenIfNeeded()
-//        let url = baseURL.appendingPathComponent("/vehicles/\(vin)/data")
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "GET"
-//        request.setValue("Bearer \(token.accessToken)", forHTTPHeaderField: "Authorization")
-//        request.setValue("application/json", forHTTPHeaderField: "Accept")
-//        
-//        let (data, response) = try await URLSession.shared.data(for: request)
-//        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-//            throw AudiConnectError.failedToFetchData
-//        }
-//        
-//        let vehicleData = try JSONDecoder().decode(VehicleData.self, from: data)
-//        return vehicleData
-//    }
-    
-    public func getVehicles() async throws -> [VehicleSummary] {
-//        try await refreshTokenIfNeeded()
-//        let url = AudiConnectConstants.vehicleInfoURL.appendingPathComponent("/vehicles")
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "GET"
-//        request.setValue("Bearer \(token.accessToken)", forHTTPHeaderField: "Authorization")
-//        request.setValue("application/json", forHTTPHeaderField: "Accept")
-//        
-//        let (data, response) = try await URLSession.shared.data(for: request)
-//        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-//            throw AudiConnectError.failedToFetchData
-//        }
-//        
-//        let vehicles = try JSONDecoder().decode([VehicleSummary].self, from: data)
-//        return vehicles
-        try await auth.login()
-        return []
+    public func getVehicles() async throws -> [VehiclesResponse.Vehicle] {
+        try await auth.loginIfRequired()
+        let configuration = try auth.getConfiguration()
+        var request = URLRequest(url: configuration.mdkURL.appending(path: "vehicle/v2/vehicles"))
+        request.allHTTPHeaderFields = auth.headers(tokenType: .idk)
+        let vehicles: VehiclesResponse = try await urlSession.object(for: request)
+        return vehicles.data
     }
     
-//    func updateVehicleStatus(vin: String, status: VehicleStatusUpdate) async throws {
-//        try await refreshTokenIfNeeded()
-//        let url = baseURL.appendingPathComponent("/vehicles/\(vin)/status")
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "POST"
-//        request.setValue("Bearer \(token.accessToken)", forHTTPHeaderField: "Authorization")
-//        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-//        
-//        request.httpBody = try JSONEncoder().encode(status)
-//        
-//        let (_, response) = try await URLSession.shared.data(for: request)
-//        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 204 else {
-//            throw AudiConnectError.failedToUpdateStatus
-//        }
-//    }
-//    
-//    func refreshTokenIfNeeded() async throws {
-//        let expirationThreshold: TimeInterval = 300 // 5 minutes before expiry
-//        let currentTime = Date().timeIntervalSince1970
-//        let tokenExpiryTime = currentTime + TimeInterval(token.expiresIn)
-//        
-//        if tokenExpiryTime - currentTime < expirationThreshold {
-//            token = try await oauthService.refreshToken(refreshToken: token.refreshToken)
-//        }
-//    }
-}
-
-enum AudiConnectError: Error, LocalizedError {
-    case failedToFetchData
-    case failedToUpdateStatus
-    case invalidResponse
-    case tokenRefreshFailed
-    
-    var errorDescription: String? {
-        switch self {
-        case .failedToFetchData:
-            return "Failed to fetch vehicle data."
-        case .failedToUpdateStatus:
-            return "Failed to update vehicle status."
-        case .invalidResponse:
-            return "Received an invalid response from the server."
-        case .tokenRefreshFailed:
-            return "Failed to refresh the token."
+    public func getVehicleInformation(vin: String) async throws -> VehicleInformationResponse {
+        try await auth.loginIfRequired()
+        let configuration = try auth.getConfiguration()
+        let language = configuration.language
+        let country = configuration.country
+        let headers = auth.headers(tokenType: .audi, appending: [
+            "Accept-Language": "\(language)-\(country)",
+            "Content-Type": "application/json",
+            "X-User-Country": country,
+        ])
+        
+        struct Body: Encodable {
+            let query: String
+            let variables: [String: String]
         }
+        let data = Body(
+            query: "query ($vin: String!) {userVehicle(vehicleCoreId: $vin) {vehicle {core {modelYear} classification {modelRange} media {shortName longName} renderPictures(mediaTypes: \"MYAPN1NB\") { mediaType url}}}}",
+            variables: ["vin": vin]
+        )
+        
+        var request = URLRequest(url: configuration.baseURL.appending(path: "vgql/v1/graphql"))
+        request.httpMethod = "POST"
+        request.httpBody = try JSONEncoder().encode(data)
+        request.allHTTPHeaderFields = headers
+        return try await urlSession.object(for: request)
+    }
+    
+    public func getVehicleStatus(vin: String) async throws -> VehicleStatusResponse {
+        try await auth.loginIfRequired()
+        let configuration = try auth.getConfiguration()
+        
+        let headers = auth.headers(tokenType: .idk)
+        guard var capabilitiesURLComponents = URLComponents(url: configuration.mdkURL, resolvingAgainstBaseURL: false) else {
+            throw FailedToConstructURLError()
+        }
+        capabilitiesURLComponents.path = "/vehicle/v1/vehicles/\(vin)/selectivestatus"
+        capabilitiesURLComponents.queryItems = [
+            URLQueryItem(name: "jobs", value: "userCapabilities")
+        ]
+        guard let capabilitiesURL = capabilitiesURLComponents.url else {
+            throw FailedToConstructURLError()
+        }
+        var capabilitiesRequest = URLRequest(url: capabilitiesURL)
+        capabilitiesRequest.allHTTPHeaderFields = headers
+        let capabilitiesResponse: CapabilitiesResponse = try await urlSession.object(for: capabilitiesRequest)
+        
+        let statusJobs = capabilitiesResponse.userCapabilities.capabilitiesStatus.value
+            .map(\.id)
+            .joined(separator: ",")
+        
+        guard var statusURLComponents = URLComponents(url: configuration.mdkURL, resolvingAgainstBaseURL: false) else {
+            throw FailedToConstructURLError()
+        }
+        statusURLComponents.path = "/vehicle/v1/vehicles/\(vin)/selectivestatus"
+        statusURLComponents.queryItems = [
+            URLQueryItem(name: "jobs", value: statusJobs)
+        ]
+        guard let capabilitiesURL = statusURLComponents.url else {
+            throw FailedToConstructURLError()
+        }
+        var statusRequest = URLRequest(url: capabilitiesURL)
+        statusRequest.allHTTPHeaderFields = headers
+        return try await urlSession.object(for: statusRequest)
     }
 }
 
-struct VehicleData: Codable {
-    let vin: String
-    let model: String
-    let year: Int
-    let mileage: Int
+private extension AudiConnect {
+    
+    func createVehicleURL(vin: String) async throws -> FillRegion {
+        if let urls = vehicleURLs[vin] {
+            return urls
+        }
+        
+        var urlRaw = "https://msg.volkswagen.de/fs-car"
+        var urlSetterRaw = "https://mal-1a.prd.ece.vwg-connect.com/api"
+        guard let urlSetter = URL(string: urlSetterRaw) else {
+            throw FailedToConstructURLError()
+        }
+        var request = URLRequest(url: urlSetter.appending(path: "cs/vds/v1/vehicles/\(vin)/homeRegion"))
+        request.allHTTPHeaderFields = auth.headers(tokenType: .mbb)
+        let homeRegion: HomeRegionResponse = try await urlSession.object(for: request)
+        let vehicleURL = homeRegion.homeRegion.baseURL
+        
+        if vehicleURL != urlSetterRaw {
+            urlRaw = vehicleURL
+                .replacingOccurrences(of: "mal-", with: "fal-")
+                .replacingOccurrences(of: "/api", with: "/fs-car")
+            urlSetterRaw = vehicleURL
+        }
+        guard let url = URL(string: urlRaw), let urlSetter = URL(string: urlSetterRaw) else {
+            throw FailedToConstructURLError()
+        }
+        vehicleURLs[vin] = (url, urlSetter)
+        return (url, urlSetter)
+    }
 }
 
-public struct VehicleSummary: Codable {
-    let vin: String
-    let model: String
+private extension Auth {
+    func getConfiguration() throws -> Configuration {
+        guard let configuration else {
+            throw ConfigurationMissingError()
+        }
+        return configuration
+    }
 }
 
-struct VehicleStatusUpdate: Codable {
-    let status: String
+public struct VehicleData: Codable {
+    
 }
+
+typealias VIN = String
+
+typealias FillRegion = (url: URL, urlSetter: URL)

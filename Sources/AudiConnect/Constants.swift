@@ -1,5 +1,5 @@
 //
-//  AudiConnectConstants.swift
+//  Constants.swift
 //  AudiConnect
 //
 //  Created by William Alexander on 10/01/2025.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct AudiConnectConstants {
+struct Constants {
     static let brand = "Audi"
     
     // Client IDs for different models
@@ -22,13 +22,8 @@ struct AudiConnectConstants {
     static let vehicleInfoURL = URL(string: "https://app-api.live-my.audi.com/vgql/v1/graphql")!
     static let hereComURL = URL(string: "https://csm.cc.api.here.com/api/v1")!
     static let userInfoURL = URL(string: "https://userinformationservice.apps.emea.vwapps.io")!
-
+    
     // Header values
     static let userAgent = "Android/4.24.2 (Build 800240338.root project 'onetouch-android'.ext.buildTime) Android/11"
     static let appVersion = "4.24.2"
-
-    // Timing constants
-    static let delay: TimeInterval = 10
-    static let timeout: TimeInterval = 120
-    static let requestStatusSleep: TimeInterval = 10
 }

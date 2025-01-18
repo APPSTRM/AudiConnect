@@ -9,32 +9,38 @@ import Foundation
 
 final class Auth {
     
+    private(set) var xClientID: String?
+    private(set) var userID = ""
+    private(set) var mbbToken: MBBToken?
+    private(set) var hereToken: HereToken?
+    private(set) var idkToken: IDKToken?
+    private(set) var audiToken: AZSToken?
+    private(set) var configuration: Configuration? = nil
+    private(set) var binded = false
+    
     private let username: String
     private let password: String
     private let country: String
     private let model: Model
-    
-    private var xClientID: String?
-    private var userID = ""
-    private var mbbToken: MBBToken?
-    private var hereToken: HereToken?
-    private var idkToken: IDKToken?
-    private var audiToken: AZSToken?
-    private var configuration: Configuration? = nil
-    private var binded = false
-    
-    private let urlSession = URLSession.shared
+    private let urlSession: URLSession
     
     init(
         username: String,
         password: String,
         country: String,
-        model: Model
+        model: Model,
+        urlSession: URLSession
     ) {
         self.username = username
         self.password = password
         self.country = country
         self.model = model
+        self.urlSession = urlSession
+    }
+    
+    func loginIfRequired() async throws {
+        if binded { return }
+        try await login()
     }
     
     func login() async throws {
@@ -174,30 +180,75 @@ final class Auth {
         print("✅ Authentication process completed successfully")
     }
     
+    func headers(
+        tokenType: TokenType? = nil,
+        appending extraHeaders: [String: String]? = nil,
+        okHTTP: Bool = false,
+        securityToken: String? = nil
+    ) -> [String: String] {
+        var headers = [
+            "Accept": "application/json",
+            "Accept-Charset": "utf-8",
+            "User-Agent": Constants.userAgent,
+            "X-App-Name": "myAudi",
+            "X-App-Version": Constants.appVersion,
+        ]
+        
+        var tokenType = tokenType
+        if let securityToken {
+            headers["User-Agent"] = "okhttp/3.11.0"
+            headers["x-mbbSecToken"] = securityToken
+            tokenType = .mbb
+        }
+        if let tokenType {
+            // refreshTokens
+            let token = switch tokenType {
+            case .idk: idkToken?.accessToken
+            case .mbb: mbbToken?.accessToken
+            case .audi: audiToken?.accessToken
+            case .here: hereToken?.accessToken
+            }
+            if let token {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+        }
+        if let xClientID {
+            headers["X-Client-ID"] = xClientID
+        }
+        if okHTTP {
+            headers["User-Agent"] = "okhttp/3.11.0"
+        }
+        if let extraHeaders {
+            headers.merge(extraHeaders) { (_, new) in new }
+        }
+        
+        return headers
+    }
+    
     @discardableResult
     private func retrieveURLService() async throws -> Configuration {
-        let marketURL = AudiConnectConstants.marketURL.appending(path: "/markets")
+        let marketURL = Constants.marketURL.appending(path: "/markets")
         let markets: MarketsResponse = try await urlSession.object(from: marketURL)
         guard let countrySpecification = markets.countries.countrySpecifications[country] else {
             throw CountryNotFoundError()
         }
         let language = countrySpecification.defaultLanguage
         
-        let servicesURL = AudiConnectConstants.marketURL.appending(path: "/market/\(country)/\(language)")
+        let servicesURL = Constants.marketURL.appending(path: "/market/\(country)/\(language)")
         let services: ServicesResponse = try await urlSession.object(from: servicesURL)
         
         let openIDConfig: OpenIDConfig = try await urlSession.object(from: services.oidcURL)
         
         let configuration = Configuration(
-            clientID: services.clientID ?? AudiConnectConstants.clientIDs[model] ?? "",
+            clientID: services.clientID ?? Constants.clientIDs[model] ?? "",
             audiURL: services.audiURL,
             baseURL: services.baseURL,
             profileURL: services.profileURL.appending(path: "/v3"),
-            mbbURL: services.mbbURL ?? AudiConnectConstants.mbbURL,
-            hereURL: AudiConnectConstants.hereComURL,
+            mbbURL: services.mbbURL ?? Constants.mbbURL,
+            hereURL: Constants.hereComURL,
             mdkURL: services.mdkURL,
             cvURL: services.cvvsbURL,
-            userURL: AudiConnectConstants.userInfoURL,
+            userURL: Constants.userInfoURL,
             authorizationEndpoint: openIDConfig.authorizationURL,
             tokenEndpoint: openIDConfig.tokenURL,
             revocationEndpoint: openIDConfig.revocationURL,
@@ -272,7 +323,7 @@ final class Auth {
             "platform": "google",
             "client_brand": "Audi",
             "appName": "myAudi",
-            "appVersion": AudiConnectConstants.appVersion,
+            "appVersion": Constants.appVersion,
             "appId": "de.myaudi.mobile.assistant",
         ]
         var request = URLRequest(url: mbbEndpoint.appending(path: "mobile/register/v1" ))
@@ -341,51 +392,6 @@ final class Auth {
         request.allHTTPHeaderFields = headers()
         request.setFollowRedirects(false)
         return try await urlSession.object(for: request, delegate: SessionDelegate())
-    }
-    
-    private func headers(
-        tokenType: TokenType? = nil,
-        appending extraHeaders: [String: String]? = nil,
-        okHTTP: Bool = false,
-        securityToken: String? = nil
-    ) -> [String: String] {
-        var headers = [
-            "Accept": "application/json",
-            "Accept-Charset": "utf-8",
-            "User-Agent": AudiConnectConstants.userAgent,
-            "X-App-Name": "myAudi",
-            "X-App-Version": AudiConnectConstants.appVersion,
-        ]
-        
-        var tokenType = tokenType
-        if let securityToken {
-            headers["User-Agent"] = "okhttp/3.11.0"
-            headers["x-mbbSecToken"] = securityToken
-            tokenType = .mbb
-        }
-        if let tokenType {
-            // refreshTokens
-            let token = switch tokenType {
-            case .idk: idkToken?.accessToken
-            case .mbb: mbbToken?.accessToken
-            case .audi: audiToken?.accessToken
-            case .here: hereToken?.accessToken
-            }
-            if let token {
-                headers["Authorization"] = "Bearer \(token)"
-            }
-        }
-        if let xClientID {
-            headers["X-Client-ID"] = xClientID
-        }
-        if okHTTP {
-            headers["User-Agent"] = "okhttp/3.11.0"
-        }
-        if let extraHeaders {
-            headers.merge(extraHeaders) { (_, new) in new }
-        }
-        
-        return headers
     }
 }
 

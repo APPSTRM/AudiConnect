@@ -7,11 +7,17 @@
 
 import Foundation
 
+let decoder: JSONDecoder = {
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+    return decoder
+}()
+
 extension URLSession {
     
     func object<Response: Decodable>(
         from url: URL,
-        decoder: JSONDecoder = JSONDecoder(),
+        decoder: JSONDecoder = decoder,
         delegate: (any URLSessionTaskDelegate)? = nil
     ) async throws -> Response {
         let (data, _) = try await data(from: url, delegate: delegate)
@@ -23,7 +29,7 @@ extension URLSession {
     
     func object<Response: Decodable>(
         for request: URLRequest,
-        decoder: JSONDecoder = JSONDecoder(),
+        decoder: JSONDecoder = decoder,
         delegate: (any URLSessionTaskDelegate)? = nil
     ) async throws -> Response {
         let (data, _) = try await data(for: request, delegate: delegate)
