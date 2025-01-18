@@ -177,6 +177,7 @@ final class Auth {
             mbbToken.refreshToken = hereRefreshToken
         }
         
+        binded = true
         print("✅ Authentication process completed successfully")
     }
     
