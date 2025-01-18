@@ -16,9 +16,8 @@ final class Auth {
     
     private var xClientID: String?
     private var userID = ""
-    private var mbbToken: [String: Any] = [:]
-    private var hereToken: [String: Any] = [:]
-    private var mbbTokenExpired: Date?
+    private var mbbToken: MBBToken?
+    private var hereToken: HereToken?
     private var idkToken: IDKToken?
     private var audiToken: AZSToken?
     private var configuration: Configuration? = nil
@@ -158,7 +157,21 @@ final class Auth {
         
         self.xClientID = try await registerIDK()
         
-        print(self.xClientID)
+        var mbbToken = try await getMBBToken(idToken: idkToken.idToken, refreshToken: nil)
+        self.mbbToken = mbbToken
+        
+        // Immediately refresh the MBB token
+        mbbToken = try await getMBBToken(idToken: nil, refreshToken: mbbToken.refreshToken)
+        mbbToken.expiresAt = .now + Double(mbbToken.expiresIn)
+        
+        let hereToken = try await getHereToken(idToken: idkToken.idToken, refreshToken: nil)
+        self.hereToken = hereToken
+        
+        if let hereRefreshToken = hereToken.refreshToken {
+            mbbToken.refreshToken = hereRefreshToken
+        }
+        
+        print("✅ Authentication process completed successfully")
     }
     
     @discardableResult
@@ -206,15 +219,17 @@ final class Auth {
                 "refresh_token": refreshToken,
                 "response_type": "token id_token",
             ]
-        } else {
+        } else if let codeVerifier {
             [
                 "client_id": clientID,
                 "grant_type": "authorization_code",
                 "code": code,
                 "redirect_uri": "myaudi:///",
                 "response_type": "token id_token",
-                "code_verifier": codeVerifier ?? "",
+                "code_verifier": codeVerifier,
             ]
+        } else {
+            throw AccessOrIDTokenMustBeProvided()
         }
 //        let safeData = data.mapValues { $0.replacingOccurrences(of: "+", with: "%20") }
         let encodedData = try formEncodedData(data)
@@ -269,6 +284,65 @@ final class Auth {
         return response.clientID
     }
     
+    private func getMBBToken(idToken: String?, refreshToken: String?) async throws -> MBBToken {
+        guard let mbbEndpoint = configuration?.mbbURL else {
+            throw ConfigurationMissingError()
+        }
+        let data: [String: String] = if let refreshToken {
+            [
+                "grant_type": "refresh_token",
+                "token": refreshToken,
+                "scope": "sc2:fal",
+                // "vin": vin, // App uses a dedicated VIN here, but it works without, don't know
+            ]
+        } else if let idToken {
+            [
+                "grant_type": "id_token",
+                "token": idToken,
+                "scope": "sc2:fal",
+            ]
+        } else {
+            throw AccessOrIDTokenMustBeProvided()
+        }
+//        let safeData = data.mapValues { $0.replacingOccurrences(of: "+", with: "%20") }
+        let encodedData = try formEncodedData(data)
+        var request = URLRequest(url: mbbEndpoint.appending(path: "mobile/oauth2/v1/token" ))
+        request.httpMethod = "POST"
+        request.httpBody = encodedData
+        request.allHTTPHeaderFields = headers()
+        request.setFollowRedirects(false)
+        return try await urlSession.object(for: request, delegate: SessionDelegate())
+    }
+    
+    private func getHereToken(idToken: String?, refreshToken: String?) async throws -> HereToken {
+        guard let mbbEndpoint = configuration?.mbbURL else {
+            throw ConfigurationMissingError()
+        }
+        let data: [String: String] = if let refreshToken {
+            [
+                "grant_type": "refresh_token",
+                "token": refreshToken,
+                "scope": "sc2:here_a_t21-s",
+            ]
+        } else if let idToken {
+            [
+                "grant_type": "id_token",
+                "token": idToken,
+                "scope": "sc2:here_a_t21-s",
+            ]
+        } else {
+            throw AccessOrIDTokenMustBeProvided()
+        }
+//        let safeData = data.mapValues { $0.replacingOccurrences(of: "+", with: "%20") }
+        let encodedData = try formEncodedData(data)
+        var request = URLRequest(url: mbbEndpoint.appending(path: "mobile/oauth2/v1/token" ))
+        request.httpMethod = "POST"
+        request.httpBody = encodedData
+        request.allHTTPHeaderFields = headers()
+        request.setFollowRedirects(false)
+        return try await urlSession.object(for: request, delegate: SessionDelegate())
+    }
+    
     private func headers(
         tokenType: TokenType? = nil,
         appending extraHeaders: [String: String]? = nil,
@@ -293,9 +367,9 @@ final class Auth {
             // refreshTokens
             let token = switch tokenType {
             case .idk: idkToken?.accessToken
-            case .mbb: mbbToken["access_token"]
+            case .mbb: mbbToken?.accessToken
             case .audi: audiToken?.accessToken
-            case .here: hereToken["access_token"]
+            case .here: hereToken?.accessToken
             }
             if let token {
                 headers["Authorization"] = "Bearer \(token)"
@@ -354,6 +428,7 @@ struct UserIdMissingError: Error {}
 struct AuthCodeMissingError: Error {}
 struct MissingClientIDError: Error {}
 struct ConfigurationMissingError: Error {}
+struct AccessOrIDTokenMustBeProvided: Error {}
 
 private final class SessionDelegate: NSObject, URLSessionTaskDelegate {
     @objc
