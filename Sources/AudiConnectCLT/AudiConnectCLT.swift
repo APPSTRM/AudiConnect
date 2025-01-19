@@ -24,13 +24,13 @@ struct AudiConnectCLT: AsyncParsableCommand {
     )
     
     struct Options: ParsableArguments {
-        @Argument(help: ArgumentHelp("Your AudiConnect username (registered email)."))
+        @Option(help: ArgumentHelp("Your AudiConnect username (registered email)."))
         var username: String
         
-        @Argument(help: ArgumentHelp("Your AudiConnect password."))
+        @Option(help: ArgumentHelp("Your AudiConnect password."))
         var password: String
         
-        @Argument(help: ArgumentHelp("Your country code"))
+        @Option(help: ArgumentHelp("Your country code"))
         var country: String = "GB"
     }
 }
@@ -60,13 +60,13 @@ extension AudiConnectCLT {
     struct VehicleInformation: AsyncParsableCommand {
         
         struct Options: ParsableArguments {
-            @Argument(help: ArgumentHelp("Your AudiConnect username (registered email)."))
+            @Option(help: ArgumentHelp("Your AudiConnect username (registered email)."))
             var username: String
             
-            @Argument(help: ArgumentHelp("Your AudiConnect password."))
+            @Option(help: ArgumentHelp("Your AudiConnect password."))
             var password: String
             
-            @Argument(help: ArgumentHelp("Your country code"))
+            @Option(help: ArgumentHelp("Your country code"))
             var country: String = "GB"
             
             @Argument(help: ArgumentHelp("The VIN of the vehicle to retrieve information for."))
@@ -94,13 +94,13 @@ extension AudiConnectCLT {
     struct VehicleStatus: AsyncParsableCommand {
         
         struct Options: ParsableArguments {
-            @Argument(help: ArgumentHelp("Your AudiConnect username (registered email)."))
+            @Option(help: ArgumentHelp("Your AudiConnect username (registered email)."))
             var username: String
             
-            @Argument(help: ArgumentHelp("Your AudiConnect password."))
+            @Option(help: ArgumentHelp("Your AudiConnect password."))
             var password: String
             
-            @Argument(help: ArgumentHelp("Your country code"))
+            @Option(help: ArgumentHelp("Your country code"))
             var country: String = "GB"
             
             @Argument(help: ArgumentHelp("The VIN of the vehicle to retrieve information for."))
