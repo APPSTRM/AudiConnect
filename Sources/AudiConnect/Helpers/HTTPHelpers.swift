@@ -93,3 +93,9 @@ extension URLRequest {
         setValue(followRedirects.description, forHTTPHeaderField: "X-APP-FOLLOW-REDIRECTS")
     }
 }
+
+extension Collection where Element == URLQueryItem {
+    subscript(_ name: String) -> String? {
+        first { $0.name == name }?.value
+    }
+}
