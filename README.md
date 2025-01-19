@@ -48,7 +48,7 @@ let vehicleInformation = try await audiConnect.getVehicleInformation(vin: "vehic
 
 ```swift
 let audiConnect = AudiConnect(username: "username", password: "password", country: "GB", model: .standard)
-let vehicleStatus = try await audiConnect.getVehicleStatus(vin: options.vin)
+let vehicleStatus = try await audiConnect.getVehicleStatus(vin: "vehicle vin")
 ```
 
 Note: Not all properties are currently being decoded, additions to the library are welcomed to add support for these.
