@@ -23,19 +23,22 @@ final class Auth {
     private let country: String
     private let model: Model
     private let urlSession: URLSession
+    private let isDebugLoggingEnabled: Bool
     
     init(
         username: String,
         password: String,
         country: String,
         model: Model,
-        urlSession: URLSession
+        urlSession: URLSession,
+        isDebugLoggingEnabled: Bool = false
     ) {
         self.username = username
         self.password = password
         self.country = country
         self.model = model
         self.urlSession = urlSession
+        self.isDebugLoggingEnabled = isDebugLoggingEnabled
     }
     
     func loginIfRequired() async throws {
@@ -236,16 +239,25 @@ final class Auth {
     @discardableResult
     private func retrieveURLService() async throws -> Configuration {
         let marketURL = Constants.marketURL.appending(path: "/markets")
-        let markets: MarketsResponse = try await urlSession.object(from: marketURL)
+        let markets: MarketsResponse = try await urlSession.object(
+            from: marketURL,
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
         guard let countrySpecification = markets.countries.countrySpecifications[country] else {
             throw CountryNotFoundError()
         }
         let language = countrySpecification.defaultLanguage
         
         let servicesURL = Constants.marketURL.appending(path: "/market/\(country)/\(language)")
-        let services: ServicesResponse = try await urlSession.object(from: servicesURL)
+        let services: ServicesResponse = try await urlSession.object(
+            from: servicesURL,
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
         
-        let openIDConfig: OpenIDConfig = try await urlSession.object(from: services.oidcURL)
+        let openIDConfig: OpenIDConfig = try await urlSession.object(
+            from: services.oidcURL,
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
         
         let configuration = Configuration(
             clientID: services.clientID ?? Constants.clientIDs[model] ?? "",
@@ -298,7 +310,11 @@ final class Auth {
         request.httpBody = encodedData
         request.allHTTPHeaderFields = headers()
         request.setFollowRedirects(false)
-        return try await urlSession.object(for: request, delegate: SessionDelegate())
+        return try await urlSession.object(
+            for: request,
+            delegate: SessionDelegate(),
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
     }
     
     private func getAZSToken(idToken: String) async throws -> AZSToken {
@@ -316,7 +332,11 @@ final class Auth {
         request.httpBody = try JSONEncoder().encode(data)
         request.allHTTPHeaderFields = headers(appending: ["Content-Type": "application/json"])
         request.setFollowRedirects(false)
-        return try await urlSession.object(for: request, delegate: SessionDelegate())
+        return try await urlSession.object(
+            for: request,
+            delegate: SessionDelegate(),
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
     }
     
     /// Registers the IDK token
@@ -339,7 +359,11 @@ final class Auth {
         request.httpBody = try JSONEncoder().encode(data)
         request.allHTTPHeaderFields = headers(appending: ["Content-Type": "application/json"])
         request.setFollowRedirects(false)
-        let response: RegisterIDKTokenResponse = try await urlSession.object(for: request, delegate: SessionDelegate())
+        let response: RegisterIDKTokenResponse = try await urlSession.object(
+            for: request,
+            delegate: SessionDelegate(),
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
         return response.clientID
     }
     
@@ -370,7 +394,11 @@ final class Auth {
         request.httpBody = encodedData
         request.allHTTPHeaderFields = headers()
         request.setFollowRedirects(false)
-        return try await urlSession.object(for: request, delegate: SessionDelegate())
+        return try await urlSession.object(
+            for: request,
+            delegate: SessionDelegate(),
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
     }
     
     private func getHereToken(idToken: String?, refreshToken: String?) async throws -> HereToken {
@@ -399,7 +427,11 @@ final class Auth {
         request.httpBody = encodedData
         request.allHTTPHeaderFields = headers()
         request.setFollowRedirects(false)
-        return try await urlSession.object(for: request, delegate: SessionDelegate())
+        return try await urlSession.object(
+            for: request,
+            delegate: SessionDelegate(),
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
     }
 }
 

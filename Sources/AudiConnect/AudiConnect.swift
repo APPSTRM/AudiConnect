@@ -5,12 +5,28 @@ public final class AudiConnect {
     
     private let auth: Auth
     private let urlSession: URLSession
+    private let isDebugLoggingEnabled: Bool
     
     private var vehicleURLs: [VIN: FillRegion] = [:]
     
-    public init(username: String, password: String, country: String, model: Model, urlSession: URLSession = .shared) {
-        self.auth = Auth(username: username, password: password, country: country, model: model, urlSession: urlSession)
+    public init(
+        username: String,
+        password: String,
+        country: String,
+        model: Model,
+        urlSession: URLSession = .shared,
+        isDebugLoggingEnabled: Bool = false
+    ) {
+        self.auth = Auth(
+            username: username,
+            password: password,
+            country: country,
+            model: model,
+            urlSession: urlSession,
+            isDebugLoggingEnabled: isDebugLoggingEnabled
+        )
         self.urlSession = urlSession
+        self.isDebugLoggingEnabled = isDebugLoggingEnabled
     }
     
     public func getVehicles() async throws -> [VehiclesResponse.Vehicle] {

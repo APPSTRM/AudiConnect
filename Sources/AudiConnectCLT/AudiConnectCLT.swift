@@ -32,6 +32,9 @@ struct AudiConnectCLT: AsyncParsableCommand {
         
         @Argument(help: ArgumentHelp("Your country code"))
         var country: String = "GB"
+        
+        @Flag
+        var verbose: Bool = false
     }
 }
 
@@ -47,7 +50,8 @@ extension AudiConnectCLT {
                 username: options.username,
                 password: options.password,
                 country: options.country,
-                model: .standard
+                model: .standard,
+                isDebugLoggingEnabled: options.verbose
             )
             let vehicles = try await audiConnect.getVehicles()
             print("Vehicles", vehicles, separator: "\n")
@@ -71,6 +75,9 @@ extension AudiConnectCLT {
             
             @Argument(help: ArgumentHelp("The VIN of the vehicle to retrieve information for."))
             var vin: String
+            
+            @Flag
+            var verbose: Bool = false
         }
         
         @OptionGroup()
@@ -81,7 +88,8 @@ extension AudiConnectCLT {
                 username: options.username,
                 password: options.password,
                 country: options.country,
-                model: .standard
+                model: .standard,
+                isDebugLoggingEnabled: options.verbose
             )
             let vehicleInformation = try await audiConnect.getVehicleInformation(vin: options.vin)
             print("Vehicle Information", vehicleInformation, separator: "\n")
@@ -105,6 +113,9 @@ extension AudiConnectCLT {
             
             @Argument(help: ArgumentHelp("The VIN of the vehicle to retrieve information for."))
             var vin: String
+            
+            @Flag
+            var verbose: Bool = false
         }
         
         @OptionGroup()
@@ -115,7 +126,8 @@ extension AudiConnectCLT {
                 username: options.username,
                 password: options.password,
                 country: options.country,
-                model: .standard
+                model: .standard,
+                isDebugLoggingEnabled: options.verbose
             )
             let vehicleStatus = try await audiConnect.getVehicleStatus(vin: options.vin)
             print("Vehicle Status", vehicleStatus, separator: "\n")
