@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "AudiConnect",
-    platforms: [.iOS(.v16), .macOS(.v13)],
+    platforms: [.iOS(.v16), .macOS(.v13), .watchOS(.v9), .tvOS(.v16)],
     products: [
         .executable(name: "AudiConnectCLT", targets: ["AudiConnectCLT"]),
         .library(name: "AudiConnect", targets: ["AudiConnect"]),
