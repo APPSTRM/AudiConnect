@@ -8,12 +8,20 @@
 import Foundation
 
 public struct VehicleStatusResponse: Decodable {
-    public let vehicleLights: VehicleLights
+    public let lights: VehicleLights
     public let access: Access
     public let measurements: Measurements
-    public let vehicleHealthInspection: VehicleHealthInspection
+    public let healthInspection: VehicleHealthInspection
     public let oilLevel: OilLevel
-    public let fuelStatus: FuelStatus
+    public let fuel: FuelStatus
+    
+    enum CodingKeys: String, CodingKey {
+        case lights = "vehicleLights"
+        case access, measurements
+        case healthInspection = "vehicleHealthInspection"
+        case oilLevel = "oilLevel"
+        case fuel = "fuelStatus"
+    }
 }
 
 public extension VehicleStatusResponse {
