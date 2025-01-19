@@ -16,7 +16,7 @@ final class Auth {
     private(set) var idkToken: IDKToken?
     private(set) var audiToken: AZSToken?
     private(set) var configuration: Configuration? = nil
-    private(set) var binded = false
+    private(set) var isAuthenticated = false
     
     private let username: String
     private let password: String
@@ -39,7 +39,7 @@ final class Auth {
     }
     
     func loginIfRequired() async throws {
-        if binded { return }
+        if isAuthenticated { return }
         try await login()
     }
     
@@ -112,8 +112,17 @@ final class Auth {
         
         // Follow first redirect
         let redirectLocation1 = try extractRedirectLocation(from: submitPasswordResponse.1)
+        
+        let redirectLocation1Components = URLComponents(url: redirectLocation1, resolvingAgainstBaseURL: false)
+        if redirectLocation1Components?.queryItems?["error"] == "login.error.throttled" {
+            throw LoginRequestsThrottledError()
+        }
+        
+        if redirectLocation1Components?.queryItems?["error"] == "login.errors.password_invalid" {
+            throw IncorrectPasswordError()
+        }
+        
         var followRedirect1Request = URLRequest(url: redirectLocation1)
-        followRedirect1Request.httpMethod = "GET"
         followRedirect1Request.allHTTPHeaderFields = headers
         followRedirect1Request.setFollowRedirects(false)
         let followRedirect1Response = try await urlSession.data(for: followRedirect1Request, delegate: SessionDelegate())
@@ -121,7 +130,6 @@ final class Auth {
         // Follow second redirect
         let redirectLocation2 = try extractRedirectLocation(from: followRedirect1Response.1)
         var followRedirect2Request = URLRequest(url: redirectLocation2)
-        followRedirect2Request.httpMethod = "GET"
         followRedirect2Request.allHTTPHeaderFields = headers
         followRedirect2Request.setFollowRedirects(false)
         let followRedirect2Response = try await urlSession.data(for: followRedirect2Request, delegate: SessionDelegate())
@@ -129,7 +137,6 @@ final class Auth {
         // Follow third redirect, extract auth code
         let authCodeLocation = try extractRedirectLocation(from: followRedirect2Response.1)
         var authCodeRequest = URLRequest(url: authCodeLocation)
-        authCodeRequest.httpMethod = "GET"
         authCodeRequest.allHTTPHeaderFields = headers
         authCodeRequest.setFollowRedirects(false)
         let authCodeResponse = try await urlSession.data(for: authCodeRequest, delegate: SessionDelegate())
@@ -177,8 +184,8 @@ final class Auth {
             mbbToken.refreshToken = hereRefreshToken
         }
         
-        binded = true
-        print("✅ Authentication process completed successfully")
+        isAuthenticated = true
+        AuthenticationLogger.info("✅ Authentication process completed successfully")
     }
     
     func headers(
@@ -429,6 +436,12 @@ enum TokenType: String {
 
 struct FailedToConstructURLError: Error {}
 struct CountryNotFoundError: Error {}
+struct LoginRequestsThrottledError: Error {
+    var errorDescription: String? { "Login requests have been throttled, please try again later." }
+}
+struct IncorrectPasswordError: LocalizedError {
+    var errorDescription: String? { "Incorrect password, please try again." }
+}
 struct FailedToExtractHMACError: Error {}
 struct LocationHeaderMissingError: Error {}
 struct UserIdMissingError: Error {}

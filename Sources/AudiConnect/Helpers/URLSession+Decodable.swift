@@ -45,22 +45,24 @@ private func logResponse(_ data: Data, forUrl url: URL?) {
         let jsonObject = try JSONSerialization.jsonObject(with: data, options: [])
         let prettyJSONData = try JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted])
         guard let prettyJSONString = String(data: prettyJSONData, encoding: .utf8) else { return }
-        print(
-            "---------------",
-            "🌐 JSON for url \(url?.debugDescription ?? "-")",
-            "---------------",
-            prettyJSONString,
-            "---------------",
-            separator: "\n"
+        NetworkingLogger.debug(
+            """
+---------------
+🌐 JSON for url \(url?.debugDescription ?? "-")
+---------------
+\(prettyJSONString)
+---------------
+"""
         )
     } catch {
-        print(
-            "---------------",
-            "🌐 Response for url \(url?.debugDescription ?? "-")",
-            "---------------",
-            String(data: data, encoding: .utf8) ?? "None",
-            "---------------",
-            separator: "\n"
+        NetworkingLogger.debug(
+            """
+---------------
+🌐 JSON for url \(url?.debugDescription ?? "-")
+---------------
+\(String(data: data, encoding: .utf8) ?? "None")
+---------------
+"""
         )
     }
 }

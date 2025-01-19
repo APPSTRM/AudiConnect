@@ -30,24 +30,8 @@ struct AudiConnectCLT: AsyncParsableCommand {
         @Argument(help: ArgumentHelp("Your AudiConnect password."))
         var password: String
         
-//        @Option(help: ArgumentHelp(NSLocalizedString(
-//            "The locale to use when making API calls. "
-//            + "Defaults to the system locale if possible, otherwise defaults to Germany. ",
-//            comment: ""
-//        )))
-//        var locale: SupportedLocale? = nil
-        
-//        private var resolvedLocale: Locale {
-//            // Prioritize the provided locale option, if one was given.
-//            if let givenLocale = locale {
-//                return Locale(identifier: givenLocale.rawValue)
-//            }
-//            return SupportedLocale.default
-//        }
-        
-//        var resolvedEnvironment: Environment {
-//            return .init(locale: resolvedLocale) ?? .germany
-//        }
+        @Argument(help: ArgumentHelp("Your country code"))
+        var country: String = "GB"
     }
 }
 
@@ -59,7 +43,12 @@ extension AudiConnectCLT {
         var options: Options
         
         func run() async throws {
-            let audiConnect = AudiConnect(username: options.username, password: options.password, country: "GB", model: .standard)
+            let audiConnect = AudiConnect(
+                username: options.username,
+                password: options.password,
+                country: options.country,
+                model: .standard
+            )
             let vehicles = try await audiConnect.getVehicles()
             print("Vehicles", vehicles, separator: "\n")
         }
@@ -77,6 +66,9 @@ extension AudiConnectCLT {
             @Argument(help: ArgumentHelp("Your AudiConnect password."))
             var password: String
             
+            @Argument(help: ArgumentHelp("Your country code"))
+            var country: String = "GB"
+            
             @Argument(help: ArgumentHelp("The VIN of the vehicle to retrieve information for."))
             var vin: String
         }
@@ -85,7 +77,12 @@ extension AudiConnectCLT {
         var options: Options
         
         func run() async throws {
-            let audiConnect = AudiConnect(username: options.username, password: options.password, country: "GB", model: .standard)
+            let audiConnect = AudiConnect(
+                username: options.username,
+                password: options.password,
+                country: options.country,
+                model: .standard
+            )
             let vehicleInformation = try await audiConnect.getVehicleInformation(vin: options.vin)
             print("Vehicle Information", vehicleInformation, separator: "\n")
         }
@@ -103,6 +100,9 @@ extension AudiConnectCLT {
             @Argument(help: ArgumentHelp("Your AudiConnect password."))
             var password: String
             
+            @Argument(help: ArgumentHelp("Your country code"))
+            var country: String = "GB"
+            
             @Argument(help: ArgumentHelp("The VIN of the vehicle to retrieve information for."))
             var vin: String
         }
@@ -111,7 +111,12 @@ extension AudiConnectCLT {
         var options: Options
         
         func run() async throws {
-            let audiConnect = AudiConnect(username: options.username, password: options.password, country: "GB", model: .standard)
+            let audiConnect = AudiConnect(
+                username: options.username,
+                password: options.password,
+                country: options.country,
+                model: .standard
+            )
             let vehicleStatus = try await audiConnect.getVehicleStatus(vin: options.vin)
             print("Vehicle Status", vehicleStatus, separator: "\n")
         }
